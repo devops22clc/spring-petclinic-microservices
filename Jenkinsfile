@@ -74,9 +74,10 @@ pipeline {
             }
         }
         stage("Build & TEST") {
+            agent any
             parallel {
                 stage("Build") {
-                    agent { label 'maven-node' }
+                    //agent { label 'maven-node' }
                     steps {
                         sh "echo run build"
                         checkout scm
@@ -105,7 +106,7 @@ pipeline {
                     }
                 }
                 stage("TEST") {
-                    agent { label 'maven-standby-node' }
+                    //agent { label 'maven-standby-node' }
                     steps {
                         sh "echo run test"
                         checkout scm
