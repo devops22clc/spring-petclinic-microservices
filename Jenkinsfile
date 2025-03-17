@@ -148,7 +148,7 @@ pipeline {
                             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                             -H "X-GitHub-Api-Version: 2022-11-28" \
                             https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
-                            -d '{"context":"Jenkins-ci", "state":"success","description":"Passed CI"}'
+                            -d '{"context":"Jenkins-ci", "state":"success","description":"Passed CI", "target_url" : ""}'
                             """
                             }
                         }
