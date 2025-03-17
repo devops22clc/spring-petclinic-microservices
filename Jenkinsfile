@@ -96,9 +96,11 @@ pipeline {
                         }
                     }
                      post {
-                        cleanup {
-                            sh "echo Cleaning workspace after build"
-                            cleanWS()
+                        always {
+                            cleanWs(cleanWhenNotBuilt: false,
+                                    deleteDirs: true,
+                                    disableDeferredWipeout: true,
+                                    notFailBuild: true)
                         }
                     }
                 }
@@ -123,9 +125,11 @@ pipeline {
                         }
                     }
                     post {
-                        cleanup {
-                            sh "echo Cleaning workspace after test"
-                            cleanWS()
+                        always {
+                            cleanWs(cleanWhenNotBuilt: false,
+                                    deleteDirs: true,
+                                    disableDeferredWipeout: true,
+                                    notFailBuild: true)
                         }
                     }
                 }
