@@ -95,6 +95,12 @@ pipeline {
                             }
                         }
                     }
+                     post {
+                        cleanup {
+                            sh "echo Cleaning workspace after build"
+                            cleanWS()
+                        }
+                    }
                 }
                 stage("TEST") {
                     agent { label 'maven-standby-node' }
@@ -114,6 +120,12 @@ pipeline {
                                 """
                                 }
                             }
+                        }
+                    }
+                    post {
+                        cleanup {
+                            sh "echo Cleaning workspace after test"
+                            cleanWS()
                         }
                     }
                 }
