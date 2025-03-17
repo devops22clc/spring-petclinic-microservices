@@ -1,5 +1,6 @@
 package org.springframework.samples.petclinic.customers.web;
 
+import java.util.Date;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,8 @@ class PetResourceTest {
         Owner owner = new Owner();
         owner.setFirstName("George");
         owner.setLastName("Bush");
+        owner.setAddress("227 NVC");
+        owner.setCity("HCM");
 
         Pet pet = new Pet();
 
@@ -70,6 +73,7 @@ class PetResourceTest {
         PetType petType = new PetType();
         petType.setId(6);
         pet.setType(petType);
+        pet.setBirthDate(new Date());
 
         owner.addPet(pet);
         return pet;
