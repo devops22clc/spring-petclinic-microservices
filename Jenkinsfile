@@ -76,7 +76,8 @@ pipeline {
         stage("Build & TEST") {
             parallel {
                 stage("Build") {
-                    agent { label 'maven-node' }
+                    //agent { label 'maven-node' }
+                    agent any
                     steps {
                         sh "echo run build"
                         checkout scm
@@ -105,7 +106,8 @@ pipeline {
                     }
                 }
                 stage("TEST") {
-                    agent { label 'maven-standby-node' }
+                    //agent { label 'maven-standby-node' }
+                    agent any
                     steps {
                         sh "echo run test"
                         checkout scm
@@ -146,7 +148,7 @@ pipeline {
                             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                             -H "X-GitHub-Api-Version: 2022-11-28" \
                             https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
-                            -d '{"context":"Jenkins-ci", "state":"success","description":"Passed CI"}'
+                            -d '{"context":"Jenkins-ci", "state":"success","description":"Passed CI", "target_url" : "http://13.250.103.30:8080/job/spring-petclinic-ci-cd/"}'
                             """
                             }
                         }
@@ -163,7 +165,7 @@ pipeline {
                                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                                 -H "X-GitHub-Api-Version: 2022-11-28" \
                                 https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
-                                -d '{"context":"Jenkins-ci", "state":"failure","description":"Failed CI"}'
+                                -d '{"context":"Jenkins-ci", "state":"failure","description":"Failed CI", "target_url" : "http://13.250.103.30:8080/job/spring-petclinic-ci-cd/"}'
                                 """
                             }
                         }
