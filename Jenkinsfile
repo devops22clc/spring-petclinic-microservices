@@ -87,12 +87,12 @@ pipeline {
                            def version = sh(script: 'grep -A 3 "<parent>" pom.xml | grep -oP "<version>\\K[0-9]+\\.[0-9]+\\.[0-9]+"', returnStdout: true).trim()
                            for (service in changedServices) {
                                sh """
-                                   docker build -f docker/Dockerfile --build-arg ARTIFACT_NAME=${service}-${version} -t ${service}:${env.GIT_COMMIT_SHA}  ${service}/target
+                                   docker build -f docker/Dockerfile --build-arg ARTIFACT_NAME=${service}-${version} -t ${OWNER}/${service}:${env.GIT_COMMIT_SHA}  ${service}/target
                                    docker push ${OWNER}/${service}:${env.GIT_COMMIT_SHA}
                                """
                            }
                         }
-                        sh "echo y | docker image prune -a && echo y | docker system prune -a"
+//                         sh "echo y | docker image prune -a && echo y | docker system prune -a"
                     }
                      post {
                         always {
