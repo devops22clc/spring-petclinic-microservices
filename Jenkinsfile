@@ -61,7 +61,6 @@ pipeline {
         stage("Build & TEST") {
             parallel {
                 stage("Build and push image") {
-                    //agent { label 'maven-node' }
                     agent any
                     steps {
                         sh "echo run build"
