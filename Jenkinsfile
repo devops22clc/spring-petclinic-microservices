@@ -38,9 +38,9 @@ pipeline {
                         def rootChanged = false
 
                         for (file in changedFiles) {
-                            echo "file: ${file} || service_as: ${SERVICE_AS}"
+                            echo "changedFiles: ${file}"
 
-                            if (!file.startsWith("${SERVICE_AS}") && file != ${JENKINS_FILE_NAME}) {
+                            if (!file.startsWith("${SERVICE_AS}") && file != "${JENKINS_FILE_NAME}") {
                                 rootChanged = true
                                 echo "Changed Root"
                                 break
