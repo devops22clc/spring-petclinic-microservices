@@ -5,7 +5,7 @@ pipeline {
         OWNER = "devops22clc"
         REPO_URL = "https://github.com/devops22clc/spring-petclinic-microservices.git"
         REPO_NAME = "spring-petclinic-microservices"
-        SERVICE_AS = "spring-petclinic",
+        SERVICE_AS = "spring-petclinic"
         JENKINS_FILE_NAME = "Jenkinsfile"
     }
     stages {
