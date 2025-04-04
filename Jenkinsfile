@@ -39,7 +39,6 @@ pipeline {
 
                         for (file in changedFiles) {
                             echo "changedFiles: ${file}"
-
                             if (!file.startsWith("${SERVICE_AS}") && file != "${JENKINS_FILE_NAME}") {
                                 rootChanged = true
                                 echo "Changed Root"
