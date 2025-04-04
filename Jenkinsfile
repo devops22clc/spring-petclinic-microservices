@@ -95,6 +95,14 @@ pipeline {
                             }
                         }
                     }
+                     post {
+                        always {
+                            cleanWs(cleanWhenNotBuilt: false,
+                                    deleteDirs: true,
+                                    disableDeferredWipeout: true,
+                                    notFailBuild: true)
+                        }
+                    }
                 }
                 stage("TEST") {
                     agent { label 'maven-standby-node' }
@@ -114,6 +122,14 @@ pipeline {
                                 """
                                 }
                             }
+                        }
+                    }
+                    post {
+                        always {
+                            cleanWs(cleanWhenNotBuilt: false,
+                                    deleteDirs: true,
+                                    disableDeferredWipeout: true,
+                                    notFailBuild: true)
                         }
                     }
                 }

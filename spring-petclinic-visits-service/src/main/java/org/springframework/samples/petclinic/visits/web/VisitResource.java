@@ -78,5 +78,6 @@ class VisitResource {
     record Visits(
         List<Visit> items
     ) {
+
     }
 }
