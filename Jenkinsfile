@@ -68,7 +68,6 @@ pipeline {
                         script {
                             env.GIT_COMMIT_SHA = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
                             if (env.IS_CHANGED_ROOT == "true")  env.CHANGED_SERVICES = env.SERVICES
-
                             def changedServices = env.CHANGED_SERVICES.split(',')
                             for (service in changedServices) {
                                 sh """
