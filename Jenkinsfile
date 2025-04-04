@@ -86,7 +86,7 @@ pipeline {
                         }
                         script {
                            def changedServices = env.CHANGED_SERVICES.split(',')
-                           def version = sh(script: "grep -A 3 "<parent>" pom.xml | grep -oP "<version>\K[0-9]+\.[0-9]+\.[0-9]+"", returnStdout: true).trim()
+                           def version = sh(script: "grep -A 3 '<parent>' pom.xml | grep -oP "<version>\K[0-9]+\.[0-9]+\.[0-9]+"", returnStdout: true).trim()
                            for (service in changedServices) {
                                sh """
                                    docker build -f docker/Dockerfile --build-arg ARTIFACT_NAME=${service}-${version} -t ${service}:${env.GIT_COMMIT_SHA}  ${service}/target
