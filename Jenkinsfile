@@ -39,11 +39,11 @@ pipeline {
 
                         for (file in changedFiles) {
                             echo "changedFiles: ${file}"
-                            if (!file.startsWith("${SERVICE_AS}") && file != "${JENKINS_FILE_NAME}") {
+                            if (!file.startsWith("${SERVICE_AS}")) {
                                 rootChanged = true
                                 echo "Changed Root"
                                 break
-                            } else {
+                            } else if (file != "${JENKINS_FILE_NAME}") {
                                 def service = file.split("/")[0]
                                 changedServices.add(service)
                             }
