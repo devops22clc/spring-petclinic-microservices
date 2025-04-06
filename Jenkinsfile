@@ -1,5 +1,4 @@
 pipeline {
-
     agent none
     options { skipDefaultCheckout() }
     environment {
@@ -7,6 +6,7 @@ pipeline {
         REPO_URL = "https://github.com/devops22clc/spring-petclinic-microservices.git"
         REPO_NAME = "spring-petclinic-microservices"
         SERVICE_AS = "spring-petclinic"
+        JENKINS_FILE_NAME = "Jenkinsfile"
     }
     stages {
         stage('Initialize Variables') {
@@ -24,20 +24,6 @@ pipeline {
                             "spring-petclinic-genai-service"
                     ]
                     env.SERVICES = SERVICES.join(",")
-
-                    switch (env.BRANCH_NAME) {
-                    case "main":
-                            env.STAGE = "prod"
-                            break
-                        case "dev":
-                            env.STAGE = "dev"
-                            break
-                        case "uat":
-                            env.STAGE = "uat"
-                            break
-                        default:
-                            env.STAGE = env.BRANCH_NAME
-                    }
                 }
             }
         }
@@ -52,13 +38,12 @@ pipeline {
                         def rootChanged = false
 
                         for (file in changedFiles) {
-                            echo "file: ${file} || service_as: ${SERVICE_AS}"
-
-                            if (!file.startsWith("${SERVICE_AS}")) {
+                            echo "changedFiles: ${file}"
+                            if (!file.startsWith("${SERVICE_AS}") && file != "${JENKINS_FILE_NAME}") {
                                 rootChanged = true
                                 echo "Changed Root"
                                 break
-                            } else {
+                            } else if (file != "${JENKINS_FILE_NAME}") {
                                 def service = file.split("/")[0]
                                 changedServices.add(service)
                             }
@@ -75,8 +60,7 @@ pipeline {
         }
         stage("Build & TEST") {
             parallel {
-                stage("Build") {
-                    //agent { label 'maven-node' }
+                stage("Build and push image") {
                     agent any
                     steps {
                         sh "echo run build"
@@ -84,7 +68,6 @@ pipeline {
                         script {
                             env.GIT_COMMIT_SHA = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
                             if (env.IS_CHANGED_ROOT == "true")  env.CHANGED_SERVICES = env.SERVICES
-
                             def changedServices = env.CHANGED_SERVICES.split(',')
                             for (service in changedServices) {
                                 sh """
@@ -95,6 +78,24 @@ pipeline {
                                 """
                             }
                         }
+                        sh "echo push image to docker"
+                        withCredentials([usernamePassword(credentialsId: 'docker-registry-token', usernameVariable: 'USERNAME', passwordVariable: 'PASSWD')]) {
+                           sh 'echo "$PASSWD" | docker login --username "$USERNAME" --password-stdin'
+                        }
+                        script {
+                           def changedServices = env.CHANGED_SERVICES.split(',')
+                           def version = sh(script: 'grep -A 3 "<parent>" pom.xml | grep -oP "<version>\\K[0-9]+\\.[0-9]+\\.[0-9]+"', returnStdout: true).trim()
+                           for (service in changedServices) {
+                               sh """
+                                   docker build -f docker/Dockerfile --build-arg ARTIFACT_NAME=${service}-${version} -t ${OWNER}/${service}:${env.GIT_COMMIT_SHA}  ${service}/target
+                                   docker push ${OWNER}/${service}:${env.GIT_COMMIT_SHA}
+                               """
+                               if (env.BRANCH_NAME == "main") {
+                                    sh "docker push ${OWNER}/${service}:latest"
+                               }
+                           }
+                        }
+                        sh "echo y | docker image prune -a && echo y | docker system prune -a"
                     }
                      post {
                         always {
@@ -140,7 +141,7 @@ pipeline {
                 success {
                     node('controller-node') {
                         script {
-                            withCredentials([string(credentialsId: 'access-token', variable: 'GITHUB_TOKEN')]) {
+                            withCredentials([string(credentialsId: 'github-repo-access-token', variable: 'GITHUB_TOKEN')]) {
                                 sh """
                             curl -L \
                             -X POST \
@@ -157,7 +158,7 @@ pipeline {
                 failure {
                     node('controller-node') {
                         script {
-                            withCredentials([string(credentialsId: 'access-token', variable: 'GITHUB_TOKEN')]) {
+                            withCredentials([string(credentialsId: 'github-repo-access-token', variable: 'GITHUB_TOKEN')]) {
                                 sh """
                                 curl -L \
                                 -X POST \
@@ -173,49 +174,5 @@ pipeline {
                 }
             }
         }
-        //stage("Push artifact") {
-        //    when {
-        //        expression { return env.STAGE == "prod" || env.STAGE == "dev" || env.STAGE == "uat" }
-        //    }
-        //    agent { label 'maven-node' }
-        //    steps {
-        //        withCredentials([usernamePassword(credentialsId: 'docker-registry-token', usernameVariable: 'USERNAME', passwordVariable: 'PASSWD')]) {
-        //            sh 'echo "$PASSWD" | docker login --username "$USERNAME" --password-stdin'
-        //        }
-        //        script {
-        //            def changedServices = env.CHANGED_SERVICES.split(',')
-        //            for (service in changedServices) {
-        //                sh """
-        //                    docker push ${OWNER}/${env.STAGE}-${service}:${env.GIT_COMMIT_SHA}
-        //                """
-        //            }
-        //        }
-        //        sh "echo y | docker image prune -a && echo y | docker system prune -a"
-        //    }
-        //}
-        //stage("Trigger Github Actions") {
-        //
-        //}
-        //stage('Deploy') {
-        //    when {
-        //        expression { return env.STAGE == "prod" || env.STAGE == "dev" || env.STAGE == "uat" }
-        //    }
-        //    agent { label 'kubernetes-node' }
-        //    steps {
-        //                script {
-        //            if (env.IS_CHANGED_ROOT == 'true') {
-        //                        echo "Deploying all services"
-        //                sh """
-        //
-        //                """
-        //            } else if (env.CHANGED_SERVICES?.trim()) {
-        //                def changedServices = env.CHANGED_SERVICES.split(',')
-        //                for (service in changedServices) {
-        //                    echo "Deploying service: ${service}"
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
     }
 }
