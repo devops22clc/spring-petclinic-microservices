@@ -91,7 +91,11 @@ pipeline {
                                    docker push ${OWNER}/${service}:${env.GIT_COMMIT_SHA}
                                """
                                if (env.BRANCH_NAME == "main") {
-                                    sh "docker push ${OWNER}/${service}:latest"
+
+                                    sh """
+                                        docker tag ${OWNER}/${service}:${env.GIT_COMMIT_SHA} ${OWNER}/${service}:latest
+                                        docker push ${OWNER}/${service}:latest
+                                    """
                                }
                            }
                         }
