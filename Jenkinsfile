@@ -90,9 +90,12 @@ pipeline {
                                    docker build -f docker/Dockerfile --build-arg ARTIFACT_NAME=${service}-${version} -t ${OWNER}/${service}:${env.GIT_COMMIT_SHA}  ${service}/target
                                    docker push ${OWNER}/${service}:${env.GIT_COMMIT_SHA}
                                """
+                               if (env.BRANCH_NAME == "main") {
+                                    sh "docker push ${OWNER}/${service}:latest"
+                               }
                            }
                         }
-//                         sh "echo y | docker image prune -a && echo y | docker system prune -a"
+                        sh "echo y | docker image prune -a && echo y | docker system prune -a"
                     }
                      post {
                         always {
