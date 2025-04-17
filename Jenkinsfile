@@ -1,8 +1,8 @@
 pipeline {
-    agent any
+    agent none
     tools {
-        maven 'Maven3.9.6' // Đảm bảo Maven được cấu hình trong Jenkins
-        jdk 'OpenJDK-17'        // Đảm bảo JDK 17 được cấu hình trong Jenkins
+        maven 'Maven3.9.6'
+        jdk 'OpenJDK-17'
     }
     environment {
         OWNER = "devops22clc"
@@ -10,10 +10,11 @@ pipeline {
         REPO_NAME = "spring-petclinic-microservices"
         SERVICE_AS = "spring-petclinic"
         JENKINS_FILE_NAME = "Jenkinsfile"
-        DOCKER_CREDENTIALS_ID = 'docker-registry-token' // ID credentials trong Jenkins
+        DOCKER_CREDENTIALS_ID = 'docker-registry-token'
     }
     stages {
         stage('Initialize Variables') {
+            agent { label 'controller-node' }
             steps {
                 script {
                     def SERVICES = [
@@ -31,6 +32,7 @@ pipeline {
             }
         }
         stage("Detect Changes") {
+            agent { label 'controller-node' }
             steps {
                 dir("${WORKSPACE}") {
                     script {
@@ -59,6 +61,7 @@ pipeline {
         stage("Build & Test") {
             parallel {
                 stage("Build and Push Image") {
+                    agent any
                     steps {
                         checkout scm
                         script {
@@ -98,6 +101,7 @@ pipeline {
                     }
                 }
                 stage("Test") {
+                    agent any
                     steps {
                         checkout scm
                         script {
@@ -123,32 +127,36 @@ pipeline {
             }
             post {
                 success {
-                    script {
-                        withCredentials([string(credentialsId: 'github-repo-access-token', variable: 'GITHUB_TOKEN')]) {
-                            sh """
-                                curl -L \
-                                -X POST \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
-                                -d '{"context":"Jenkins-ci", "state":"success","description":"Passed CI", "target_url" : "http://13.250.103.30:8080/job/spring-petclinic-ci-cd/"}'
-                            """
+                    node('controller-node') {
+                        script {
+                            withCredentials([string(credentialsId: 'github-repo-access-token', variable: 'GITHUB_TOKEN')]) {
+                                sh """
+                                    curl -L \
+                                    -X POST \
+                                    -H "Accept: application/vnd.github+json" \
+                                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                                    https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
+                                    -d '{"context":"Jenkins-ci", "state":"success","description":"Passed CI", "target_url" : "http://13.250.103.30:8080/job/spring-petclinic-ci-cd/"}'
+                                """
+                            }
                         }
                     }
                 }
                 failure {
-                    script {
-                        withCredentials([string(credentialsId: 'github-repo-access-token', variable: 'GITHUB_TOKEN')]) {
-                            sh """
-                                curl -L \
-                                -X POST \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
-                                -d '{"context":"Jenkins-ci", "state":"failure","description":"Failed CI", "target_url" : "http://13.250.103.30:8080/job/spring-petclinic-ci-cd/"}'
-                            """
+                    node('controller-node') {
+                        script {
+                            withCredentials([string(credentialsId: 'github-repo-access-token', variable: 'GITHUB_TOKEN')]) {
+                                sh """
+                                    curl -L \
+                                    -X POST \
+                                    -H "Accept: application/vnd.github+json" \
+                                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                                    https://api.github.com/repos/${OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT_SHA} \
+                                    -d '{"context":"Jenkins-ci", "state":"failure","description":"Failed CI", "target_url" : "http://13.250.103.30:8080/job/spring-petclinic-ci-cd/"}'
+                                """
+                            }
                         }
                     }
                 }
