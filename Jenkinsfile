@@ -1,8 +1,8 @@
 pipeline {
     agent any
     tools {
-        maven 'maven-3.6.3' // Đảm bảo Maven được cấu hình trong Jenkins
-        jdk 'jdk-17'        // Đảm bảo JDK 17 được cấu hình trong Jenkins
+        maven 'Maven3.9.6' // Đảm bảo Maven được cấu hình trong Jenkins
+        jdk 'OpenJDK-17'        // Đảm bảo JDK 17 được cấu hình trong Jenkins
     }
     environment {
         OWNER = "devops22clc"
