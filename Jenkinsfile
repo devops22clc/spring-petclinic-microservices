@@ -60,43 +60,52 @@ pipeline {
         }
         stage("Build & Test") {
             parallel {
-                stage("Build and Push Image") {
+                stage("Build and push image") {
                     agent any
                     steps {
+                        sh "echo run build"
                         checkout scm
                         script {
                             env.GIT_COMMIT_SHA = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
-                            if (env.IS_CHANGED_ROOT == "true") {
-                                env.CHANGED_SERVICES = env.SERVICES
-                            }
+                            if (env.IS_CHANGED_ROOT == "true")  env.CHANGED_SERVICES = env.SERVICES
                             def changedServices = env.CHANGED_SERVICES.split(',')
-
                             for (service in changedServices) {
-                                dir(service) {
-                                    sh "mvn clean install -DskipTests -PbuildDocker"
-                                }
+                                sh """
+                                cd ${service}
+                                echo "run build for ${service}"
+                                mvn clean package -DskipTests
+                                cd ..
+                                """
                             }
                         }
+                        sh "echo push image to docker"
                         withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'USERNAME', passwordVariable: 'PASSWD')]) {
-                            sh 'echo "$PASSWD" | docker login --username "$USERNAME" --password-stdin'
+                           sh 'echo "$PASSWD" | docker login --username "$USERNAME" --password-stdin'
                         }
                         script {
-                            def changedServices = env.CHANGED_SERVICES.split(',')
-                            def version = sh(script: 'grep -A 3 "<parent>" pom.xml | grep -oP "<version>\\K[0-9]+\\.[0-9]+\\.[0-9]+"', returnStdout: true).trim()
-                            for (service in changedServices) {
-                                def imageName = "${OWNER}/${service}:${env.GIT_COMMIT_SHA}"
-                                sh "docker tag ${imageName} ${OWNER}/${service}:latest"
-                                sh "docker push ${imageName}"
-                                if (env.BRANCH_NAME == "main") {
-                                    sh "docker push ${OWNER}/${service}:latest"
-                                }
-                            }
+                           def changedServices = env.CHANGED_SERVICES.split(',')
+                           def version = sh(script: 'grep -A 3 "<parent>" pom.xml | grep -oP "<version>\\K[0-9]+\\.[0-9]+\\.[0-9]+"', returnStdout: true).trim()
+                           for (service in changedServices) {
+                               sh """
+                                   docker build -f docker/Dockerfile --build-arg ARTIFACT_NAME=${service}-${version} -t ${OWNER}/${service}:${env.GIT_COMMIT_SHA}  ${service}/target
+                                   docker push ${OWNER}/${service}:${env.GIT_COMMIT_SHA}
+                               """
+                               if (env.BRANCH_NAME == "main") {
+                                    sh """
+                                        docker tag ${OWNER}/${service}:${env.GIT_COMMIT_SHA} ${OWNER}/${service}:latest
+                                        docker push ${OWNER}/${service}:latest
+                                    """
+                               }
+                           }
                         }
-                        sh "docker image prune -a -f && docker system prune -a -f"
+                        sh "echo y | docker image prune -a && echo y | docker system prune -a"
                     }
-                    post {
+                     post {
                         always {
-                            cleanWs()
+                            cleanWs(cleanWhenNotBuilt: false,
+                                    deleteDirs: true,
+                                    disableDeferredWipeout: true,
+                                    notFailBuild: true)
                         }
                     }
                 }
