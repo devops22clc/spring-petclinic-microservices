@@ -126,7 +126,7 @@ pipeline {
                                     sh """
                                     cd ${service}
                                     mvn clean test jacoco:report && mvn clean verify
-                                """
+                                    """
                                 }
                             }
                         }
