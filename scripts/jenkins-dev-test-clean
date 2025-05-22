@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo kubectl delete ns "$JOB_ID" --force

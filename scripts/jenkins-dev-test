@@ -1,0 +1,96 @@
+pipeline {
+    agent none
+    environment {
+        OWNER = "devops22clc"
+        REPO_URL = "https://github.com/devops22clc/spring-petclinic-microservices.git"
+        OPS_REPO_URL = "https://github.com/devops22clc/spring-petclinic-microservices-ops.git"
+        REPO_NAME = "spring-petclinic-microservices"
+        OPS_REPO_NAME = "spring-petclinic-microservices-ops"
+        SERVICE_AS = "spring-petclinic"
+        JENKINS_FILE_NAME = "Jenkinsfile"
+    }
+    stages {
+        stage('Initialize Variables') {
+            agent { label 'controller-node' }
+            steps {
+                script {
+                    def SERVICES = [
+                        "spring-petclinic-config-server",
+                        "spring-petclinic-discovery-server",
+                        "spring-petclinic-api-gateway",
+                        "spring-petclinic-customers-service",
+                        "spring-petclinic-vets-service",
+                        "spring-petclinic-visits-service",
+                        "spring-petclinic-admin-server",
+                        "spring-petclinic-genai-service"
+                    ]
+                    env.SERVICES = SERVICES.join(",")
+                }
+            }
+        }
+
+        stage("Detect tag") {
+            agent { label 'controller-node' }
+            steps {
+                script {
+                    sh "rm -rf ${REPO_NAME}"
+                    sh "git clone ${REPO_URL}"
+                    dir(REPO_NAME) {
+                        def services = env.SERVICES.split(',')
+                        for (svc in services) {
+                            def tagOrBranch = params."${svc}"
+                            if (tagOrBranch != "latest") {
+                                sh "git fetch --all"
+                                sh "git checkout ${tagOrBranch}"
+                                def commit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                                env."${svc}_TAG" = commit
+                            } else {
+                                env."${svc}_TAG" = "latest"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Deployed to ...") {
+            agent { label 'controller-node' }
+            steps {
+                script {
+                    sh """
+                        rm -rf ${OPS_REPO_NAME}
+                        git clone ${OPS_REPO_URL}
+                    """
+
+                    dir(OPS_REPO_NAME) {
+                        def services = env.SERVICES.split(',')
+                        for (svc in services) {
+                            def imageTag = env."${svc}_TAG"
+                            def releaseName = svc.replaceFirst('.*-([^\\-]+-[^\\-]+)$', '$1')
+                            sh """
+                                sudo helm upgrade --install ${releaseName} ${svc}/base \
+                                  --namespace ${env.BUILD_TAG} --create-namespace \
+                                  --set image.repository=${OWNER}/${svc} \
+                                  --set image.tag=${imageTag} \
+                            """
+                        }
+                    }
+                    sh """
+                        sudo kubectl patch ingress api-gateway -n ${env.BUILD_TAG} --type='json'\
+                        -p='[ \
+                          { \
+                            "op": "replace",\
+                            "path": "/spec/rules/0/host",\
+                            "value": "${env.BUILD_TAG}.com"\
+                          }\
+                        ]'\
+                    """
+
+                    def domain = "${env.BUILD_TAG}.com"
+                    def endpoint = "http://${domain}"
+                    echo "Deployed to: ${endpoint}"
+                }
+            }
+        }
+    }
+}

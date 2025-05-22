@@ -1,0 +1,78 @@
+pipeline {
+    agent none
+    environment {
+        OWNER = "devops22clc"
+        REPO_URL = "https://github.com/devops22clc/spring-petclinic-microservices.git"
+        REPO_NAME = "spring-petclinic-microservices"
+        SERVICE_AS = "spring-petclinic"
+        JENKINS_FILE_NAME = "Jenkinsfile"
+    }
+    stages {
+        stage('Initialize Variables') {
+            agent { label 'controller-node' }
+            steps {
+                script {
+                    def SERVICES = [
+                            "spring-petclinic-config-server",
+                            "spring-petclinic-discovery-server",
+                            "spring-petclinic-api-gateway",
+                            "spring-petclinic-customers-service",
+                            "spring-petclinic-vets-service",
+                            "spring-petclinic-visits-service",
+                            "spring-petclinic-admin-server",
+                            "spring-petclinic-genai-service"
+                    ]
+                    env.SERVICES = SERVICES.join(",")
+                }
+            }
+        }
+        stage("Detect release") {
+            agent { label 'controller-node'}
+            steps {
+                script {
+                  git branch: 'main', url: 'https://github.com/devops22clc/spring-petclinic-microservices.git'
+                  env.RELEASE_TAG = params.TAG_VERSION
+                //   sh """
+                //     git tag -a ${env.RELEASE_TAG}
+                //     git push origin ${env.RELEASE_TAG}
+                //   """
+                }
+            }
+            post {
+                always {
+                    cleanWs(cleanWhenNotBuilt: false,
+                            deleteDirs: true,
+                            disableDeferredWipeout: true,
+                            notFailBuild: true)
+                }
+            }
+        }
+        stage("On release event") {
+            agent any
+            steps {
+                    withCredentials([usernamePassword(credentialsId: 'docker-registry-token', usernameVariable: 'USERNAME', passwordVariable: 'PASSWD')]) {
+                       sh 'echo "$PASSWD" | docker login --username "$USERNAME" --password-stdin'
+                    }
+                    script {
+                       def changedServices = env.SERVICES.split(',')
+                       for (service in changedServices) {
+                           sh """
+                               docker pull ${OWNER}/${service}:latest
+                               docker tag ${OWNER}/${service}:latest ${OWNER}/${service}:${env.RELEASE_TAG}
+                               docker push ${OWNER}/${service}:${env.RELEASE_TAG}
+                           """
+                       }
+                    }
+                    sh "echo y | docker image prune -a && echo y | docker system prune -a"
+            }
+            post {
+                always {
+                    cleanWs(cleanWhenNotBuilt: false,
+                            deleteDirs: true,
+                            disableDeferredWipeout: true,
+                            notFailBuild: true)
+                }
+            }
+        }
+    }
+}
